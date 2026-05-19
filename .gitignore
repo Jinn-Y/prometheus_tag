@@ -1,0 +1,35 @@
+# Prometheus runtime data
+targets.json
+backups/
+
+# Logs
+*.log
+server.log
+server.err.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

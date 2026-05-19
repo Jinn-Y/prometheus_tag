@@ -1,0 +1,21 @@
+services:
+  prometheus-target-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prometheus-target-ui
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8000
+      DATA_DIR: /data
+      BACKUP_DIR: /backups
+      WRITE_MODE: inplace
+    ports:
+      - "8000:8000"
+    volumes:
+      - /compose/prometheus-grafana/prometheus/targets.json:/data/targets.json
+      - prometheus-target-ui-backups:/backups
+
+volumes:
+  prometheus-target-ui-backups:

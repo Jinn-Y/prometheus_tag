@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prometheus Targets</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="toolbar">
+        <div>
+          <h1>Prometheus Targets</h1>
+          <p id="summary">正在读取 targets.json</p>
+        </div>
+        <div class="actions">
+          <button id="backupBtn" type="button">备份</button>
+          <button id="addBtn" type="button" class="primary">新增服务器</button>
+        </div>
+      </header>
+
+      <section class="filterbar">
+        <input id="searchInput" type="search" placeholder="搜索 IP、instance、label..." />
+        <span id="status" role="status"></span>
+      </section>
+
+      <section class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Targets</th>
+              <th>Instance</th>
+              <th>Job</th>
+              <th>IP</th>
+              <th>Price</th>
+              <th>Labels</th>
+              <th class="right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="targetRows"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <dialog id="editor">
+      <form id="targetForm" method="dialog">
+        <div class="modal-head">
+          <h2 id="editorTitle">新增服务器</h2>
+          <button id="closeBtn" type="button" class="icon-btn" aria-label="关闭">×</button>
+        </div>
+
+        <label class="field">
+          <span>Targets</span>
+          <textarea id="targetsInput" rows="3" placeholder="每行一个 target，例如 1.2.3.4:9100"></textarea>
+        </label>
+
+        <div class="label-head">
+          <span>Labels</span>
+          <button id="addLabelBtn" type="button">添加 label</button>
+        </div>
+        <div id="labelRows" class="label-rows"></div>
+
+        <div class="modal-actions">
+          <button id="deleteBtn" type="button" class="danger ghost">删除</button>
+          <span class="spacer"></span>
+          <button id="cancelBtn" type="button">取消</button>
+          <button type="submit" class="primary">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
