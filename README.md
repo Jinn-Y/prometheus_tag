@@ -21,6 +21,7 @@ http://127.0.0.1:8000/
 - 动态添加、删除任意 labels
 - 保存前校验 Prometheus file_sd JSON 结构
 - 每次写入前自动备份到 `backups/`
+- 在 UI 中查看备份内容，并可从备份恢复 `targets.json`
 
 ## Docker Compose 部署
 

@@ -77,6 +77,42 @@ def backup_targets() -> Path | None:
     return backup
 
 
+def backup_metadata(path: Path) -> dict:
+    stat = path.stat()
+    return {
+        "name": path.name,
+        "path": str(path),
+        "size": stat.st_size,
+        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+    }
+
+
+def list_backups() -> list[dict]:
+    if not BACKUP_DIR.exists():
+        return []
+    backups = [path for path in BACKUP_DIR.glob("*.json") if path.is_file()]
+    backups.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return [backup_metadata(path) for path in backups]
+
+
+def resolve_backup(name: str) -> Path:
+    if not re.fullmatch(r"[\w.-]+\.json", name):
+        raise ValidationError("备份文件名非法。")
+    path = (BACKUP_DIR / name).resolve()
+    if BACKUP_DIR not in path.parents:
+        raise ValidationError("备份路径非法。")
+    if not path.exists() or not path.is_file():
+        raise ValidationError("备份文件不存在。")
+    return path
+
+
+def read_backup(name: str) -> tuple[Path, list[dict]]:
+    path = resolve_backup(name)
+    with path.open("r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    return path, validate_targets(data)
+
+
 def write_targets(data) -> Path | None:
     validated = validate_targets(data)
     backup = backup_targets()
@@ -107,6 +143,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.serve_file(STATIC_DIR / "index.html", "text/html; charset=utf-8")
         if parsed.path == "/api/targets":
             return self.json_response({"targets": read_targets()})
+        if parsed.path == "/api/backups":
+            return self.json_response({"backups": list_backups()})
+        backup_match = re.fullmatch(r"/api/backups/([^/]+)", parsed.path)
+        if backup_match:
+            path, data = read_backup(unquote(backup_match.group(1)))
+            return self.json_response({
+                "backup": backup_metadata(path),
+                "targets": data,
+                "content": json.dumps(data, ensure_ascii=False, indent=2),
+            })
         if parsed.path.startswith("/static/"):
             filename = unquote(parsed.path.removeprefix("/static/"))
             path = (STATIC_DIR / filename).resolve()
@@ -136,6 +182,15 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/backup":
             backup = backup_targets()
             return self.json_response({"backup": str(backup) if backup else None})
+        restore_match = re.fullmatch(r"/api/backups/([^/]+)/restore", parsed.path)
+        if restore_match:
+            path, data = read_backup(unquote(restore_match.group(1)))
+            current_backup = write_targets(data)
+            return self.json_response({
+                "targets": data,
+                "restored": backup_metadata(path),
+                "backup": str(current_backup) if current_backup else None,
+            })
         return self.error_response(HTTPStatus.NOT_FOUND, "接口不存在。")
 
     def do_PUT(self):

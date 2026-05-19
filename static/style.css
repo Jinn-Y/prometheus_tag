@@ -213,6 +213,85 @@ dialog::backdrop {
   padding: 20px;
 }
 
+.backup-dialog {
+  width: min(1120px, calc(100% - 32px));
+}
+
+.backup-panel {
+  padding: 20px;
+}
+
+.backup-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  min-height: 540px;
+}
+
+.backup-list {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: auto;
+}
+
+.backup-item {
+  width: 100%;
+  height: auto;
+  min-height: 68px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  display: block;
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 500;
+}
+
+.backup-item:last-child {
+  border-bottom: 0;
+}
+
+.backup-item.active {
+  background: #e6f4f1;
+  color: var(--accent-dark);
+}
+
+.backup-item span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.backup-preview {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.backup-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.backup-preview pre {
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  background: #fbfcfd;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
 #confirmMessage {
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -291,5 +370,18 @@ form {
 
   .label-row {
     grid-template-columns: 1fr;
+  }
+
+  .backup-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .backup-preview {
+    min-height: 420px;
+  }
+
+  .backup-preview-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

@@ -12,9 +12,20 @@ const confirmDialog = document.querySelector("#confirmDialog");
 const confirmTitle = document.querySelector("#confirmTitle");
 const confirmMessage = document.querySelector("#confirmMessage");
 const confirmOkBtn = document.querySelector("#confirmOkBtn");
+const backupDialog = document.querySelector("#backupDialog");
+const backupListBtn = document.querySelector("#backupListBtn");
+const backupCloseBtn = document.querySelector("#backupCloseBtn");
+const backupRows = document.querySelector("#backupRows");
+const backupSummary = document.querySelector("#backupSummary");
+const backupName = document.querySelector("#backupName");
+const backupMeta = document.querySelector("#backupMeta");
+const backupContent = document.querySelector("#backupContent");
+const restoreBackupBtn = document.querySelector("#restoreBackupBtn");
 
 let targets = [];
 let editingIndex = null;
+let backups = [];
+let selectedBackup = null;
 
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
@@ -51,6 +62,45 @@ function escapeHtml(value) {
 
 function labelValue(item, key) {
   return item.labels?.[key] || "";
+}
+
+function formatBytes(size) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function renderBackups() {
+  backupSummary.textContent = backups.length ? `共 ${backups.length} 个备份` : "暂无备份";
+  backupRows.innerHTML = backups.length
+    ? backups.map((backup) => `
+        <button type="button" class="backup-item ${selectedBackup?.name === backup.name ? "active" : ""}" data-backup="${escapeHtml(backup.name)}">
+          ${escapeHtml(backup.name)}
+          <span>${escapeHtml(backup.modified)} · ${formatBytes(backup.size)}</span>
+        </button>
+      `).join("")
+    : `<div class="empty-state">暂无备份记录</div>`;
+}
+
+async function loadBackups() {
+  const data = await api("/api/backups");
+  backups = data.backups;
+  selectedBackup = null;
+  backupName.textContent = "请选择备份";
+  backupMeta.textContent = "";
+  backupContent.textContent = "选择左侧备份后查看 JSON 内容。";
+  restoreBackupBtn.disabled = true;
+  renderBackups();
+}
+
+async function selectBackup(name) {
+  const data = await api(`/api/backups/${encodeURIComponent(name)}`);
+  selectedBackup = data.backup;
+  backupName.textContent = data.backup.name;
+  backupMeta.textContent = `${data.backup.modified} · ${formatBytes(data.backup.size)}`;
+  backupContent.textContent = data.content;
+  restoreBackupBtn.disabled = false;
+  renderBackups();
 }
 
 function render() {
@@ -147,6 +197,7 @@ document.querySelector("#addLabelBtn").addEventListener("click", () => addLabelR
 document.querySelector("#closeBtn").addEventListener("click", () => editor.close());
 document.querySelector("#cancelBtn").addEventListener("click", () => editor.close());
 confirmOkBtn.addEventListener("click", () => confirmDialog.close());
+backupCloseBtn.addEventListener("click", () => backupDialog.close());
 searchInput.addEventListener("input", render);
 
 document.querySelector("#backupBtn").addEventListener("click", async () => {
@@ -155,6 +206,49 @@ document.querySelector("#backupBtn").addEventListener("click", async () => {
     const message = data.backup ? `备份成功：${data.backup}` : "当前没有可备份的 targets.json 文件。";
     setStatus(message);
     showConfirm(data.backup ? "备份成功" : "无需备份", message);
+    if (backupDialog.open) await loadBackups();
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+backupListBtn.addEventListener("click", async () => {
+  try {
+    backupDialog.showModal();
+    await loadBackups();
+  } catch (error) {
+    backupDialog.close();
+    setStatus(error.message, true);
+  }
+});
+
+backupRows.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-backup]");
+  if (!button) return;
+  try {
+    await selectBackup(button.dataset.backup);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+restoreBackupBtn.addEventListener("click", async () => {
+  if (!selectedBackup) return;
+  const ok = confirm(`确认恢复备份 ${selectedBackup.name}？当前 targets.json 会先自动备份，然后再恢复。`);
+  if (!ok) return;
+  try {
+    const data = await api(`/api/backups/${encodeURIComponent(selectedBackup.name)}/restore`, {
+      method: "POST",
+      body: "{}",
+    });
+    targets = data.targets;
+    render();
+    await loadBackups();
+    const message = data.backup
+      ? `已恢复 ${data.restored.name}。恢复前文件已备份：${data.backup}`
+      : `已恢复 ${data.restored.name}。`;
+    setStatus(message);
+    showConfirm("恢复成功", message);
   } catch (error) {
     setStatus(error.message, true);
   }

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prometheus Targets</title>
-    <link rel="stylesheet" href="/static/style.css?v=2" />
+    <link rel="stylesheet" href="/static/style.css?v=3" />
   </head>
   <body>
     <main class="app">
@@ -15,6 +15,7 @@
         </div>
         <div class="actions">
           <button id="backupBtn" type="button">备份</button>
+          <button id="backupListBtn" type="button">备份记录</button>
           <button id="addBtn" type="button" class="primary">新增服务器</button>
         </div>
       </header>
@@ -69,6 +70,31 @@
       </form>
     </dialog>
 
+    <dialog id="backupDialog" class="backup-dialog">
+      <div class="backup-panel">
+        <div class="modal-head">
+          <div>
+            <h2>备份记录</h2>
+            <p id="backupSummary">正在读取备份</p>
+          </div>
+          <button id="backupCloseBtn" type="button" class="icon-btn" aria-label="关闭">×</button>
+        </div>
+        <div class="backup-layout">
+          <div id="backupRows" class="backup-list"></div>
+          <section class="backup-preview">
+            <div class="backup-preview-head">
+              <div>
+                <strong id="backupName">请选择备份</strong>
+                <p id="backupMeta"></p>
+              </div>
+              <button id="restoreBackupBtn" type="button" class="danger" disabled>恢复此备份</button>
+            </div>
+            <pre id="backupContent">选择左侧备份后查看 JSON 内容。</pre>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
     <dialog id="confirmDialog" class="confirm-dialog">
       <div class="confirm-box">
         <div>
@@ -82,6 +108,6 @@
       </div>
     </dialog>
 
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/app.js?v=3"></script>
   </body>
 </html>
