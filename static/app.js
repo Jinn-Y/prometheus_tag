@@ -8,6 +8,10 @@ const editorTitle = document.querySelector("#editorTitle");
 const targetsInput = document.querySelector("#targetsInput");
 const labelRows = document.querySelector("#labelRows");
 const deleteBtn = document.querySelector("#deleteBtn");
+const confirmDialog = document.querySelector("#confirmDialog");
+const confirmTitle = document.querySelector("#confirmTitle");
+const confirmMessage = document.querySelector("#confirmMessage");
+const confirmOkBtn = document.querySelector("#confirmOkBtn");
 
 let targets = [];
 let editingIndex = null;
@@ -15,6 +19,12 @@ let editingIndex = null;
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
   statusEl.style.color = isError ? "#b42318" : "#667085";
+}
+
+function showConfirm(title, message) {
+  confirmTitle.textContent = title;
+  confirmMessage.textContent = message;
+  confirmDialog.showModal();
 }
 
 async function api(path, options = {}) {
@@ -136,12 +146,15 @@ document.querySelector("#addBtn").addEventListener("click", () => openEditor());
 document.querySelector("#addLabelBtn").addEventListener("click", () => addLabelRow());
 document.querySelector("#closeBtn").addEventListener("click", () => editor.close());
 document.querySelector("#cancelBtn").addEventListener("click", () => editor.close());
+confirmOkBtn.addEventListener("click", () => confirmDialog.close());
 searchInput.addEventListener("input", render);
 
 document.querySelector("#backupBtn").addEventListener("click", async () => {
   try {
     const data = await api("/api/backup", { method: "POST", body: "{}" });
-    setStatus(data.backup ? `已备份：${data.backup}` : "没有可备份文件");
+    const message = data.backup ? `备份成功：${data.backup}` : "当前没有可备份的 targets.json 文件。";
+    setStatus(message);
+    showConfirm(data.backup ? "备份成功" : "无需备份", message);
   } catch (error) {
     setStatus(error.message, true);
   }
@@ -170,7 +183,11 @@ deleteBtn.addEventListener("click", async () => {
     targets = data.targets;
     editor.close();
     render();
-    setStatus("已删除并写入 targets.json");
+    const message = data.backup
+      ? `已删除并写入 targets.json。备份文件：${data.backup}`
+      : "已删除并写入 targets.json。";
+    setStatus(message);
+    showConfirm("删除成功", message);
   } catch (error) {
     setStatus(error.message, true);
   }
@@ -186,7 +203,11 @@ form.addEventListener("submit", async (event) => {
     targets = data.targets;
     editor.close();
     render();
-    setStatus("已保存并写入 targets.json");
+    const message = data.backup
+      ? `已保存并写入 targets.json。备份文件：${data.backup}`
+      : "已保存并写入 targets.json。";
+    setStatus(message);
+    showConfirm("保存成功", message);
   } catch (error) {
     setStatus(error.message, true);
   }

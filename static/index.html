@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prometheus Targets</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v=2" />
   </head>
   <body>
     <main class="app">
@@ -69,6 +69,19 @@
       </form>
     </dialog>
 
-    <script src="/static/app.js"></script>
+    <dialog id="confirmDialog" class="confirm-dialog">
+      <div class="confirm-box">
+        <div>
+          <h2 id="confirmTitle">操作成功</h2>
+          <p id="confirmMessage"></p>
+        </div>
+        <div class="modal-actions">
+          <span class="spacer"></span>
+          <button id="confirmOkBtn" type="button" class="primary">知道了</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script src="/static/app.js?v=2"></script>
   </body>
 </html>
