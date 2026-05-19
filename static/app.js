@@ -21,6 +21,7 @@ const backupName = document.querySelector("#backupName");
 const backupMeta = document.querySelector("#backupMeta");
 const backupContent = document.querySelector("#backupContent");
 const restoreBackupBtn = document.querySelector("#restoreBackupBtn");
+const deleteBackupBtn = document.querySelector("#deleteBackupBtn");
 
 let targets = [];
 let editingIndex = null;
@@ -90,6 +91,7 @@ async function loadBackups() {
   backupMeta.textContent = "";
   backupContent.textContent = "选择左侧备份后查看 JSON 内容。";
   restoreBackupBtn.disabled = true;
+  deleteBackupBtn.disabled = true;
   renderBackups();
 }
 
@@ -100,6 +102,7 @@ async function selectBackup(name) {
   backupMeta.textContent = `${data.backup.modified} · ${formatBytes(data.backup.size)}`;
   backupContent.textContent = data.content;
   restoreBackupBtn.disabled = false;
+  deleteBackupBtn.disabled = false;
   renderBackups();
 }
 
@@ -249,6 +252,30 @@ restoreBackupBtn.addEventListener("click", async () => {
       : `已恢复 ${data.restored.name}。`;
     setStatus(message);
     showConfirm("恢复成功", message);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+deleteBackupBtn.addEventListener("click", async () => {
+  if (!selectedBackup) return;
+  const ok = confirm(`确认删除备份 ${selectedBackup.name}？此操作不会修改当前 targets.json。`);
+  if (!ok) return;
+  try {
+    const data = await api(`/api/backups/${encodeURIComponent(selectedBackup.name)}`, {
+      method: "DELETE",
+    });
+    backups = data.backups;
+    selectedBackup = null;
+    backupName.textContent = "请选择备份";
+    backupMeta.textContent = "";
+    backupContent.textContent = "选择左侧备份后查看 JSON 内容。";
+    restoreBackupBtn.disabled = true;
+    deleteBackupBtn.disabled = true;
+    renderBackups();
+    const message = `已删除备份：${data.deleted.name}`;
+    setStatus(message);
+    showConfirm("删除备份成功", message);
   } catch (error) {
     setStatus(error.message, true);
   }

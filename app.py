@@ -210,6 +210,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
+        backup_match = re.fullmatch(r"/api/backups/([^/]+)", parsed.path)
+        if backup_match:
+            path = resolve_backup(unquote(backup_match.group(1)))
+            deleted = backup_metadata(path)
+            path.unlink()
+            return self.json_response({"deleted": deleted, "backups": list_backups()})
+
         match = re.fullmatch(r"/api/targets/(\d+)", parsed.path)
         if not match:
             return self.error_response(HTTPStatus.NOT_FOUND, "接口不存在。")

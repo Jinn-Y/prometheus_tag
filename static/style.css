@@ -281,6 +281,13 @@ dialog::backdrop {
   border-bottom: 1px solid var(--line);
 }
 
+.backup-preview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .backup-preview pre {
   margin: 0;
   padding: 14px;
@@ -383,5 +390,13 @@ form {
   .backup-preview-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .backup-preview-actions {
+    justify-content: stretch;
+  }
+
+  .backup-preview-actions button {
+    flex: 1;
   }
 }

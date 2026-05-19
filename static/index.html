@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prometheus Targets</title>
-    <link rel="stylesheet" href="/static/style.css?v=3" />
+    <link rel="stylesheet" href="/static/style.css?v=4" />
   </head>
   <body>
     <main class="app">
@@ -87,7 +87,10 @@
                 <strong id="backupName">请选择备份</strong>
                 <p id="backupMeta"></p>
               </div>
-              <button id="restoreBackupBtn" type="button" class="danger" disabled>恢复此备份</button>
+              <div class="backup-preview-actions">
+                <button id="deleteBackupBtn" type="button" class="danger ghost" disabled>删除备份</button>
+                <button id="restoreBackupBtn" type="button" class="danger" disabled>恢复此备份</button>
+              </div>
             </div>
             <pre id="backupContent">选择左侧备份后查看 JSON 内容。</pre>
           </section>
@@ -108,6 +111,6 @@
       </div>
     </dialog>
 
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js?v=4"></script>
   </body>
 </html>
