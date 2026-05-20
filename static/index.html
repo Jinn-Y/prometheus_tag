@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prometheus Targets</title>
-    <link rel="stylesheet" href="/static/style.css?v=4" />
+    <link rel="stylesheet" href="/static/style.css?v=6" />
   </head>
   <body>
     <main class="app">
@@ -89,11 +89,37 @@
               </div>
               <div class="backup-preview-actions">
                 <button id="deleteBackupBtn" type="button" class="danger ghost" disabled>删除备份</button>
+                <button id="compareBackupBtn" type="button" disabled>对比当前</button>
                 <button id="restoreBackupBtn" type="button" class="danger" disabled>恢复此备份</button>
               </div>
             </div>
             <pre id="backupContent">选择左侧备份后查看 JSON 内容。</pre>
           </section>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="diffDialog" class="diff-dialog">
+      <div class="diff-panel">
+        <div class="modal-head">
+          <div>
+            <h2>备份对比</h2>
+            <p id="diffSummary">正在生成对比</p>
+          </div>
+          <button id="diffCloseBtn" type="button" class="icon-btn" aria-label="关闭">×</button>
+        </div>
+        <div class="diff-layout">
+          <div class="diff-grid">
+            <section>
+              <h3>备份文件</h3>
+              <pre id="diffBackup"></pre>
+            </section>
+            <section>
+              <h3>当前文件</h3>
+              <pre id="diffCurrent"></pre>
+            </section>
+          </div>
+          <div id="diffMap" class="diff-map" aria-label="差异位置导航"></div>
         </div>
       </div>
     </dialog>
@@ -111,6 +137,6 @@
       </div>
     </dialog>
 
-    <script src="/static/app.js?v=4"></script>
+    <script src="/static/app.js?v=6"></script>
   </body>
 </html>

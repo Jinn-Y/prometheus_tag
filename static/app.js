@@ -22,11 +22,21 @@ const backupMeta = document.querySelector("#backupMeta");
 const backupContent = document.querySelector("#backupContent");
 const restoreBackupBtn = document.querySelector("#restoreBackupBtn");
 const deleteBackupBtn = document.querySelector("#deleteBackupBtn");
+const compareBackupBtn = document.querySelector("#compareBackupBtn");
+const diffDialog = document.querySelector("#diffDialog");
+const diffCloseBtn = document.querySelector("#diffCloseBtn");
+const diffSummary = document.querySelector("#diffSummary");
+const diffBackup = document.querySelector("#diffBackup");
+const diffCurrent = document.querySelector("#diffCurrent");
+const diffMap = document.querySelector("#diffMap");
 
 let targets = [];
 let editingIndex = null;
 let backups = [];
 let selectedBackup = null;
+let selectedBackupTargets = null;
+let diffRows = [];
+let syncingDiffScroll = false;
 
 function setStatus(text, isError = false) {
   statusEl.textContent = text;
@@ -37,6 +47,10 @@ function showConfirm(title, message) {
   confirmTitle.textContent = title;
   confirmMessage.textContent = message;
   confirmDialog.showModal();
+}
+
+function escapeDiff(value) {
+  return escapeHtml(value || " ");
 }
 
 async function api(path, options = {}) {
@@ -87,23 +101,143 @@ async function loadBackups() {
   const data = await api("/api/backups");
   backups = data.backups;
   selectedBackup = null;
+  selectedBackupTargets = null;
   backupName.textContent = "请选择备份";
   backupMeta.textContent = "";
   backupContent.textContent = "选择左侧备份后查看 JSON 内容。";
   restoreBackupBtn.disabled = true;
   deleteBackupBtn.disabled = true;
+  compareBackupBtn.disabled = true;
   renderBackups();
 }
 
 async function selectBackup(name) {
   const data = await api(`/api/backups/${encodeURIComponent(name)}`);
   selectedBackup = data.backup;
+  selectedBackupTargets = data.targets;
   backupName.textContent = data.backup.name;
   backupMeta.textContent = `${data.backup.modified} · ${formatBytes(data.backup.size)}`;
   backupContent.textContent = data.content;
   restoreBackupBtn.disabled = false;
   deleteBackupBtn.disabled = false;
+  compareBackupBtn.disabled = false;
   renderBackups();
+}
+
+function buildDiffRows(leftText, rightText) {
+  const left = leftText.split("\n");
+  const right = rightText.split("\n");
+  const count = Math.max(left.length, right.length);
+  const rows = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const leftLine = left[index] ?? "";
+    const rightLine = right[index] ?? "";
+    let leftClass = "same";
+    let rightClass = "same";
+    let type = "same";
+
+    if (left[index] === undefined) {
+      leftClass = "empty";
+      rightClass = "added";
+      type = "added";
+    } else if (right[index] === undefined) {
+      leftClass = "removed";
+      rightClass = "empty";
+      type = "removed";
+    } else if (leftLine !== rightLine) {
+      leftClass = "changed";
+      rightClass = "changed";
+      type = "changed";
+    }
+
+    rows.push({
+      left: `<span class="diff-line ${leftClass}" data-line="${index}">${escapeDiff(leftLine)}</span>`,
+      right: `<span class="diff-line ${rightClass}" data-line="${index}">${escapeDiff(rightLine)}</span>`,
+      index,
+      type,
+      different: type !== "same",
+    });
+  }
+
+  return rows;
+}
+
+function renderDiffMap(rows) {
+  const changedRows = rows.filter((row) => row.different);
+  const total = Math.max(rows.length - 1, 1);
+
+  diffMap.innerHTML = changedRows.map((row) => {
+    const top = (row.index / total) * 100;
+    const height = Math.max(4, 100 / Math.max(rows.length, 1));
+    return `
+      <button
+        type="button"
+        class="diff-map-marker ${row.type}"
+        data-line="${row.index}"
+        title="第 ${row.index + 1} 行：${row.type}"
+        style="top: calc(${top}% - 2px); height: ${height}px"
+      ></button>
+    `;
+  }).join("");
+}
+
+function focusDiffLine(lineIndex) {
+  diffBackup.querySelectorAll(".focused").forEach((node) => node.classList.remove("focused"));
+  diffCurrent.querySelectorAll(".focused").forEach((node) => node.classList.remove("focused"));
+  diffMap.querySelectorAll(".active").forEach((node) => node.classList.remove("active"));
+
+  const leftLine = diffBackup.querySelector(`[data-line="${lineIndex}"]`);
+  const rightLine = diffCurrent.querySelector(`[data-line="${lineIndex}"]`);
+  const marker = diffMap.querySelector(`[data-line="${lineIndex}"]`);
+
+  leftLine?.classList.add("focused");
+  rightLine?.classList.add("focused");
+  marker?.classList.add("active");
+
+  const targetTop = Math.max(0, (leftLine?.offsetTop || rightLine?.offsetTop || 0) - 80);
+  syncingDiffScroll = true;
+  diffBackup.scrollTop = targetTop;
+  diffCurrent.scrollTop = targetTop;
+  requestAnimationFrame(() => {
+    syncingDiffScroll = false;
+  });
+}
+
+function syncDiffScroll(source, target) {
+  if (syncingDiffScroll) return;
+  syncingDiffScroll = true;
+  const sourceMax = Math.max(source.scrollHeight - source.clientHeight, 1);
+  const targetMax = Math.max(target.scrollHeight - target.clientHeight, 1);
+  target.scrollTop = (source.scrollTop / sourceMax) * targetMax;
+  requestAnimationFrame(() => {
+    syncingDiffScroll = false;
+  });
+}
+
+async function compareSelectedBackup() {
+  if (!selectedBackup || !selectedBackupTargets) return;
+  const currentData = await api("/api/targets");
+  targets = currentData.targets;
+  render();
+
+  const backupText = JSON.stringify(selectedBackupTargets, null, 2);
+  const currentText = JSON.stringify(targets, null, 2);
+  diffRows = buildDiffRows(backupText, currentText);
+  const diffCount = diffRows.filter((row) => row.different).length;
+
+  diffBackup.innerHTML = diffRows.map((row) => row.left).join("");
+  diffCurrent.innerHTML = diffRows.map((row) => row.right).join("");
+  renderDiffMap(diffRows);
+  diffSummary.textContent = diffCount
+    ? `${selectedBackup.name} 与当前文件有 ${diffCount} 行差异`
+    : `${selectedBackup.name} 与当前文件一致`;
+  diffDialog.showModal();
+
+  const firstDiff = diffRows.find((row) => row.different);
+  if (firstDiff) {
+    requestAnimationFrame(() => focusDiffLine(firstDiff.index));
+  }
 }
 
 function render() {
@@ -201,7 +335,15 @@ document.querySelector("#closeBtn").addEventListener("click", () => editor.close
 document.querySelector("#cancelBtn").addEventListener("click", () => editor.close());
 confirmOkBtn.addEventListener("click", () => confirmDialog.close());
 backupCloseBtn.addEventListener("click", () => backupDialog.close());
+diffCloseBtn.addEventListener("click", () => diffDialog.close());
 searchInput.addEventListener("input", render);
+diffBackup.addEventListener("scroll", () => syncDiffScroll(diffBackup, diffCurrent));
+diffCurrent.addEventListener("scroll", () => syncDiffScroll(diffCurrent, diffBackup));
+diffMap.addEventListener("click", (event) => {
+  const marker = event.target.closest(".diff-map-marker");
+  if (!marker) return;
+  focusDiffLine(Number(marker.dataset.line));
+});
 
 document.querySelector("#backupBtn").addEventListener("click", async () => {
   try {
@@ -267,15 +409,25 @@ deleteBackupBtn.addEventListener("click", async () => {
     });
     backups = data.backups;
     selectedBackup = null;
+    selectedBackupTargets = null;
     backupName.textContent = "请选择备份";
     backupMeta.textContent = "";
     backupContent.textContent = "选择左侧备份后查看 JSON 内容。";
     restoreBackupBtn.disabled = true;
     deleteBackupBtn.disabled = true;
+    compareBackupBtn.disabled = true;
     renderBackups();
     const message = `已删除备份：${data.deleted.name}`;
     setStatus(message);
     showConfirm("删除备份成功", message);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
+compareBackupBtn.addEventListener("click", async () => {
+  try {
+    await compareSelectedBackup();
   } catch (error) {
     setStatus(error.message, true);
   }
