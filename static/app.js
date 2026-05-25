@@ -127,37 +127,106 @@ async function selectBackup(name) {
 function buildDiffRows(leftText, rightText) {
   const left = leftText.split("\n");
   const right = rightText.split("\n");
-  const count = Math.max(left.length, right.length);
+  const operations = buildLineOperations(left, right);
   const rows = [];
 
-  for (let index = 0; index < count; index += 1) {
-    const leftLine = left[index] ?? "";
-    const rightLine = right[index] ?? "";
-    let leftClass = "same";
-    let rightClass = "same";
-    let type = "same";
+  for (let index = 0; index < operations.length; index += 1) {
+    const operation = operations[index];
+    const lineIndex = rows.length;
 
-    if (left[index] === undefined) {
-      leftClass = "empty";
-      rightClass = "added";
-      type = "added";
-    } else if (right[index] === undefined) {
-      leftClass = "removed";
-      rightClass = "empty";
-      type = "removed";
-    } else if (leftLine !== rightLine) {
-      leftClass = "changed";
-      rightClass = "changed";
-      type = "changed";
+    if (operation.type === "same") {
+      rows.push({
+        left: `<span class="diff-line same" data-line="${lineIndex}">${escapeDiff(operation.left)}</span>`,
+        right: `<span class="diff-line same" data-line="${lineIndex}">${escapeDiff(operation.right)}</span>`,
+        index: lineIndex,
+        type: "same",
+        different: false,
+      });
+      continue;
     }
 
+    const leftLine = operation.left ?? "";
+    const rightLine = operation.right ?? "";
+    const leftClass = operation.type === "added" ? "empty" : operation.type;
+    const rightClass = operation.type === "removed" ? "empty" : operation.type;
+
     rows.push({
-      left: `<span class="diff-line ${leftClass}" data-line="${index}">${escapeDiff(leftLine)}</span>`,
-      right: `<span class="diff-line ${rightClass}" data-line="${index}">${escapeDiff(rightLine)}</span>`,
-      index,
-      type,
-      different: type !== "same",
+      left: `<span class="diff-line ${leftClass}" data-line="${lineIndex}">${escapeDiff(leftLine)}</span>`,
+      right: `<span class="diff-line ${rightClass}" data-line="${lineIndex}">${escapeDiff(rightLine)}</span>`,
+      index: lineIndex,
+      type: operation.type,
+      different: true,
     });
+  }
+
+  return rows;
+}
+
+function buildLineOperations(left, right) {
+  const rows = [];
+  const m = left.length;
+  const n = right.length;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+  for (let i = m - 1; i >= 0; i -= 1) {
+    for (let j = n - 1; j >= 0; j -= 1) {
+      dp[i][j] = left[i] === right[j]
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+
+  const raw = [];
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (left[i] === right[j]) {
+      raw.push({ type: "same", left: left[i], right: right[j] });
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      raw.push({ type: "removed", left: left[i] });
+      i += 1;
+    } else {
+      raw.push({ type: "added", right: right[j] });
+      j += 1;
+    }
+  }
+  while (i < m) {
+    raw.push({ type: "removed", left: left[i] });
+    i += 1;
+  }
+  while (j < n) {
+    raw.push({ type: "added", right: right[j] });
+    j += 1;
+  }
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const item = raw[index];
+    if (item.type === "same") {
+      rows.push(item);
+      continue;
+    }
+
+    const removed = [];
+    const added = [];
+    while (index < raw.length && raw[index].type !== "same") {
+      if (raw[index].type === "removed") removed.push(raw[index].left);
+      if (raw[index].type === "added") added.push(raw[index].right);
+      index += 1;
+    }
+    index -= 1;
+
+    const count = Math.max(removed.length, added.length);
+    for (let changeIndex = 0; changeIndex < count; changeIndex += 1) {
+      if (removed[changeIndex] !== undefined && added[changeIndex] !== undefined) {
+        rows.push({ type: "changed", left: removed[changeIndex], right: added[changeIndex] });
+      } else if (removed[changeIndex] !== undefined) {
+        rows.push({ type: "removed", left: removed[changeIndex] });
+      } else {
+        rows.push({ type: "added", right: added[changeIndex] });
+      }
+    }
   }
 
   return rows;
