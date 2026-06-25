@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Prometheus Targets</title>
-    <link rel="stylesheet" href="/static/style.css?v=7" />
+    <link rel="stylesheet" href="/static/style.css?v=8" />
   </head>
   <body>
     <main class="app">
@@ -62,8 +62,6 @@
         <div id="labelRows" class="label-rows"></div>
 
         <div class="modal-actions">
-          <button id="deleteBtn" type="button" class="danger ghost">删除</button>
-          <span class="spacer"></span>
           <button id="cancelBtn" type="button">取消</button>
           <button type="submit" class="primary">保存</button>
         </div>
@@ -137,6 +135,20 @@
       </div>
     </dialog>
 
-    <script src="/static/app.js?v=7"></script>
+    <dialog id="deleteConfirmDialog" class="confirm-dialog">
+      <div class="confirm-box">
+        <div>
+          <h2>确认删除服务器</h2>
+          <p id="deleteConfirmMessage"></p>
+        </div>
+        <div class="modal-actions">
+          <span class="spacer"></span>
+          <button id="deleteCancelBtn" type="button">取消</button>
+          <button id="deleteConfirmBtn" type="button" class="danger">确认删除</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script src="/static/app.js?v=8"></script>
   </body>
 </html>

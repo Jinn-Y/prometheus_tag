@@ -7,11 +7,14 @@ const form = document.querySelector("#targetForm");
 const editorTitle = document.querySelector("#editorTitle");
 const targetsInput = document.querySelector("#targetsInput");
 const labelRows = document.querySelector("#labelRows");
-const deleteBtn = document.querySelector("#deleteBtn");
 const confirmDialog = document.querySelector("#confirmDialog");
 const confirmTitle = document.querySelector("#confirmTitle");
 const confirmMessage = document.querySelector("#confirmMessage");
 const confirmOkBtn = document.querySelector("#confirmOkBtn");
+const deleteConfirmDialog = document.querySelector("#deleteConfirmDialog");
+const deleteConfirmMessage = document.querySelector("#deleteConfirmMessage");
+const deleteCancelBtn = document.querySelector("#deleteCancelBtn");
+const deleteConfirmBtn = document.querySelector("#deleteConfirmBtn");
 const backupDialog = document.querySelector("#backupDialog");
 const backupListBtn = document.querySelector("#backupListBtn");
 const backupCloseBtn = document.querySelector("#backupCloseBtn");
@@ -47,6 +50,31 @@ function showConfirm(title, message) {
   confirmTitle.textContent = title;
   confirmMessage.textContent = message;
   confirmDialog.showModal();
+}
+
+function askDeleteConfirmation(item) {
+  const name = labelValue(item, "instance") || item.targets.join(", ");
+  deleteConfirmMessage.textContent = `确认删除 ${name}？删除前会自动备份当前 targets.json。`;
+  deleteConfirmDialog.showModal();
+
+  return new Promise((resolve) => {
+    const cleanup = (confirmed) => {
+      deleteCancelBtn.removeEventListener("click", onCancel);
+      deleteConfirmBtn.removeEventListener("click", onConfirm);
+      deleteConfirmDialog.removeEventListener("close", onClose);
+      if (deleteConfirmDialog.open) {
+        deleteConfirmDialog.close();
+      }
+      resolve(confirmed);
+    };
+    const onCancel = () => cleanup(false);
+    const onConfirm = () => cleanup(true);
+    const onClose = () => cleanup(false);
+
+    deleteCancelBtn.addEventListener("click", onCancel, { once: true });
+    deleteConfirmBtn.addEventListener("click", onConfirm, { once: true });
+    deleteConfirmDialog.addEventListener("close", onClose, { once: true });
+  });
 }
 
 function escapeDiff(value) {
@@ -336,6 +364,7 @@ function render() {
           <div class="row-actions">
             <button type="button" data-action="clone" data-index="${index}">复制</button>
             <button type="button" data-action="edit" data-index="${index}">编辑</button>
+            <button type="button" class="danger" data-action="delete" data-index="${index}">删除</button>
           </div>
         </td>
       </tr>
@@ -362,7 +391,6 @@ function openEditor(index = null, seed = null) {
     : structuredClone(targets[index]));
 
   editorTitle.textContent = index === null ? "新增服务器" : "编辑服务器";
-  deleteBtn.hidden = index === null;
   targetsInput.value = item.targets.join("\n");
   labelRows.innerHTML = "";
   Object.entries(item.labels || {}).forEach(([key, value]) => addLabelRow(key, value));
@@ -393,6 +421,23 @@ async function loadTargets() {
     targets = data.targets;
     render();
     setStatus("已连接 targets.json");
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+}
+
+async function deleteTarget(index) {
+  const ok = await askDeleteConfirmation(targets[index]);
+  if (!ok) return;
+  try {
+    const data = await api(`/api/targets/${index}`, { method: "DELETE" });
+    targets = data.targets;
+    render();
+    const message = data.backup
+      ? `已删除并写入 targets.json。备份文件：${data.backup}`
+      : "已删除并写入 targets.json。";
+    setStatus(message);
+    showConfirm("删除成功", message);
   } catch (error) {
     setStatus(error.message, true);
   }
@@ -502,7 +547,7 @@ compareBackupBtn.addEventListener("click", async () => {
   }
 });
 
-rowsEl.addEventListener("click", (event) => {
+rowsEl.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const index = Number(button.dataset.index);
@@ -514,24 +559,8 @@ rowsEl.addEventListener("click", (event) => {
     item.labels.instance = `${item.labels.instance || "server"}_copy`;
     openEditor(null, item);
   }
-});
-
-deleteBtn.addEventListener("click", async () => {
-  if (editingIndex === null) return;
-  const name = labelValue(targets[editingIndex], "instance") || targets[editingIndex].targets.join(", ");
-  if (!confirm(`确认删除 ${name}？`)) return;
-  try {
-    const data = await api(`/api/targets/${editingIndex}`, { method: "DELETE" });
-    targets = data.targets;
-    editor.close();
-    render();
-    const message = data.backup
-      ? `已删除并写入 targets.json。备份文件：${data.backup}`
-      : "已删除并写入 targets.json。";
-    setStatus(message);
-    showConfirm("删除成功", message);
-  } catch (error) {
-    setStatus(error.message, true);
+  if (button.dataset.action === "delete") {
+    await deleteTarget(index);
   }
 });
 
