@@ -41,9 +41,16 @@ let selectedBackupTargets = null;
 let diffRows = [];
 let syncingDiffScroll = false;
 
+let currentPage = 1;
+const pageSize = 10;
+let lastKeyword = "";
+
 function setStatus(text, isError = false) {
-  statusEl.textContent = text;
-  statusEl.style.color = isError ? "#b42318" : "#667085";
+  statusEl.innerHTML = `
+    <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${isError ? 'var(--danger)' : 'var(--accent)'}; box-shadow: 0 0 6px ${isError ? 'var(--danger)' : 'var(--accent)'}; margin-right: 4px; transform: translateY(-1px);"></span>
+    ${escapeHtml(text)}
+  `;
+  statusEl.style.color = isError ? "var(--danger)" : "var(--muted)";
 }
 
 function showConfirm(title, message) {
@@ -339,12 +346,26 @@ async function compareSelectedBackup() {
 
 function render() {
   const keyword = searchInput.value.trim().toLowerCase();
+  if (keyword !== lastKeyword) {
+    currentPage = 1;
+    lastKeyword = keyword;
+  }
+
   const visible = targets
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => JSON.stringify(item).toLowerCase().includes(keyword));
 
   summaryEl.textContent = `当前 ${targets.length} 台服务器，显示 ${visible.length} 台`;
-  rowsEl.innerHTML = visible.map(({ item, index }) => {
+
+  const totalPages = Math.ceil(visible.length / pageSize) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageItems = visible.slice(start, end);
+
+  rowsEl.innerHTML = pageItems.map(({ item, index }) => {
     const labels = Object.entries(item.labels || {});
     const extraLabels = labels.filter(([key]) => !["instance", "job", "ip", "price"].includes(key));
     const targetHtml = item.targets.map((target) => `<span>${escapeHtml(target)}</span>`).join("");
@@ -362,23 +383,121 @@ function render() {
         <td><div class="chips">${labelHtml}</div></td>
         <td class="right">
           <div class="row-actions">
-            <button type="button" data-action="clone" data-index="${index}">复制</button>
-            <button type="button" data-action="edit" data-index="${index}">编辑</button>
-            <button type="button" class="danger" data-action="delete" data-index="${index}">删除</button>
+            <button type="button" data-action="clone" data-index="${index}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              复制
+            </button>
+            <button type="button" data-action="edit" data-index="${index}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              编辑
+            </button>
+            <button type="button" class="danger" data-action="delete" data-index="${index}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              删除
+            </button>
           </div>
         </td>
       </tr>
     `;
   }).join("");
+
+  renderPagination(targets.length, visible.length);
+}
+
+function renderPagination(totalCount, filteredCount) {
+  const paginationEl = document.querySelector("#pagination");
+  if (!paginationEl) return;
+
+  const totalPages = Math.ceil(filteredCount / pageSize) || 1;
+  const startItem = filteredCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, filteredCount);
+
+  let pageButtons = [];
+  // 上一页
+  pageButtons.push(`
+    <button type="button" class="page-btn" id="prevPageBtn" ${currentPage === 1 ? "disabled" : ""}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      上一页
+    </button>
+  `);
+
+  // 页码数字
+  for (let i = 1; i <= totalPages; i++) {
+    pageButtons.push(`
+      <button type="button" class="page-num-btn ${i === currentPage ? "active" : ""}" data-page="${i}">
+        ${i}
+      </button>
+    `);
+  }
+
+  // 下一页
+  pageButtons.push(`
+    <button type="button" class="page-btn" id="nextPageBtn" ${currentPage === totalPages ? "disabled" : ""}>
+      下一页
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  `);
+
+  paginationEl.innerHTML = `
+    <div class="pagination-info">
+      显示 <span>${startItem}</span> - <span>${endItem}</span> 条，共 <span>${filteredCount}</span> 条
+    </div>
+    <div class="pagination-actions">
+      ${pageButtons.join("")}
+    </div>
+  `;
+
+  // 绑定事件
+  const prevBtn = paginationEl.querySelector("#prevPageBtn");
+  const nextBtn = paginationEl.querySelector("#nextPageBtn");
+
+  if (prevBtn && currentPage > 1) {
+    prevBtn.addEventListener("click", () => {
+      currentPage--;
+      render();
+    });
+  }
+  if (nextBtn && currentPage < totalPages) {
+    nextBtn.addEventListener("click", () => {
+      currentPage++;
+      render();
+    });
+  }
+  paginationEl.querySelectorAll(".page-num-btn[data-page]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      currentPage = Number(e.currentTarget.dataset.page);
+      render();
+    });
+  });
 }
 
 function addLabelRow(key = "", value = "") {
   const row = document.createElement("div");
   row.className = "label-row";
   row.innerHTML = `
-    <input data-label-key placeholder="label key" value="${escapeHtml(key)}" />
-    <input data-label-value placeholder="label value" value="${escapeHtml(value)}" />
-    <button type="button" aria-label="删除 label">×</button>
+    <div class="label-input-group">
+      <input data-label-key placeholder="键 (Key)" value="${escapeHtml(key)}" />
+      <input data-label-value placeholder="值 (Value)" value="${escapeHtml(value)}" />
+    </div>
+    <button type="button" class="label-delete-btn" aria-label="删除 label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+    </button>
   `;
   row.querySelector("button").addEventListener("click", () => row.remove());
   labelRows.appendChild(row);
@@ -585,3 +704,49 @@ form.addEventListener("submit", async (event) => {
 });
 
 loadTargets();
+
+// 主题切换逻辑
+const themeToggleBtn = document.querySelector("#themeToggleBtn");
+
+function initTheme() {
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  updateThemeIcon(savedTheme);
+}
+
+function updateThemeIcon(theme) {
+  if (!themeToggleBtn) return;
+  if (theme === "light") {
+    themeToggleBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    `;
+  } else {
+    themeToggleBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    `;
+  }
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+    const nextTheme = currentTheme === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    updateThemeIcon(nextTheme);
+  });
+}
+
+initTheme();
