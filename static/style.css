@@ -1129,6 +1129,12 @@ form {
   box-shadow: 0 6px 16px rgba(15, 118, 110, 0.2);
 }
 
+/* 弹窗关闭等无边框小图标按钮优化 */
+.icon-btn {
+  border: none !important;
+  background: transparent !important;
+}
+
 /* 分页样式定义 */
 .pagination {
   display: flex;
@@ -1172,14 +1178,22 @@ form {
 }
 
 :root[data-theme="light"] .pagination-actions button {
-  background: rgba(15, 23, 42, 0.02);
-  border-color: rgba(15, 23, 42, 0.08);
-  color: var(--text);
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
 :root[data-theme="light"] .pagination-actions button:hover:not(:disabled) {
-  background: rgba(15, 23, 42, 0.05);
-  border-color: rgba(15, 23, 42, 0.15);
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+:root[data-theme="light"] .pagination-actions button.page-num-btn.active {
+  background: #ccfbf1;
+  border-color: #99f6e4;
+  color: #0f766e;
+  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.15);
 }
 
 .pagination-actions button.page-num-btn {
