@@ -559,7 +559,7 @@ form {
 }
 
 .label-input-group input:first-child {
-  text-align: right;
+  text-align: center;
   font-weight: 600;
   color: var(--accent);
   width: 45%;
@@ -567,6 +567,7 @@ form {
 }
 
 .label-input-group input:last-child {
+  text-align: center;
   color: var(--text);
   width: 55%;
 }
@@ -1111,6 +1112,21 @@ form {
   background: rgba(15, 23, 42, 0.03);
   border-bottom-color: rgba(15, 23, 42, 0.08);
   color: var(--text);
+}
+
+/* 白天模式下 primary 主按钮视觉优化 */
+:root[data-theme="light"] button.primary {
+  background: #ccfbf1;
+  border-color: #99f6e4;
+  color: #0f766e;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);
+}
+
+:root[data-theme="light"] button.primary:hover {
+  background: #99f6e4;
+  border-color: #5eead4;
+  color: #115e59;
+  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.2);
 }
 
 /* 分页样式定义 */
